@@ -1,5 +1,5 @@
-import heapq
 import math
+from algorithms.helper.Heap import Heap
 
 def heapprims(data):
     #heaps with a priority queue of edges, where the priority is the L2 Distance
@@ -30,16 +30,15 @@ def heapprims(data):
     best[start] = 0.0
 
     #seed the heap with the start node's edges and record their distances as best
-    heap = list(adj[start])
-    heapq.heapify(heap)
+    heap = Heap(adj[start])
     for d, nbr, _ in adj[start]:
         if d < best[nbr]:
             best[nbr] = d
 
     #while the tree has fewer nodes than the graph, keep adding edges
-    while heap and len(in_tree) < len(all_nodes):
+    while len(heap) > 0 and len(in_tree) < len(all_nodes):
         #get the distance, the node, and the row index of the edge
-        dist, nbr, idx = heapq.heappop(heap)
+        dist, nbr, idx = heap.pop()
         if nbr in in_tree:
             #lazy deletion: stale entry from before nbr joined the tree
             continue
@@ -50,6 +49,6 @@ def heapprims(data):
         for d, other, i in adj[nbr]:
             if other not in in_tree and d < best[other]:
                 best[other] = d
-                heapq.heappush(heap, (d, other, i))
+                heap.push((d, other, i))
     #pull the actual rows out of the original dataframe in MST order
     return data.iloc[mst_edge_indices].reset_index(drop=True)

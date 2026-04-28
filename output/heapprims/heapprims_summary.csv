@@ -1,0 +1,7 @@
+metric,value
+Unique nodes,6105
+Input edges,7035
+MST edges,6104
+Expected (V-1),6104
+Total L2 Distance,378728.83993799996
+Runtime (seconds),0.028987

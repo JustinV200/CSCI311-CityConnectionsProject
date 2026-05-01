@@ -3,5 +3,5 @@ Unique nodes,6105
 Input edges,7035
 MST edges,6104
 Expected (V-1),6104
-Total L2 Distance,311198.44869999995
-Runtime (seconds),0.188620
+Total L2 Distance,378728.839938
+Runtime (seconds),0.179288

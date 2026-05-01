@@ -10,10 +10,12 @@ class Disjoint():
 
     def find_set(self, vertex):
         node = self.nodes[vertex]
-        if node.parent != None:
-            node.parent = self.find_set(node.parent.data)
-
-        return node
+        if node.parent is None:
+            return node
+        # path compression: point directly at the root, and return the root
+        root = self.find_set(node.parent.data)
+        node.parent = root
+        return root
 
     def union(self, vertex1, vertex2):
         parent1 = self.find_set(vertex1)

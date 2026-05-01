@@ -1,100 +1,85 @@
-from parser.parser import parse_csv
-from algorithms.prims import prims
-from algorithms.heapprims import heapprims
-from algorithms.kruskal import kruskal
-import pandas as pd
-import numpy as np
+import sys
 import time
+import pandas as pd
 from pathlib import Path
 
-def main():
-    repo_root = Path(__file__).resolve().parent.parent
-    file_path = repo_root / 'testingdata' / 'data.csv'
-    data = parse_csv(file_path)
-    #data format: Edge ID, Start Node ID, End Node ID, L2 Distance)
-    #print(data.head())
+from parser.parser import parse_csv
+from algorithms.heapprims import heapprims
+from algorithms.prims import prims
+from algorithms.kruskal import kruskal
 
-    #Prims Algorithm - time this
+
+def write_output(mst_df, output_path):
+    # write MST edges to output file in the same space-separated format as input
+    mst_df.to_csv(output_path, index=False, header=False, sep=' ')
+
+
+def run_algorithm(name, fn, data):
+    # run a single algorithm, time it, and return (result_df, elapsed)
     start = time.perf_counter()
-    result = prims(data)
+    result = fn(data)
     elapsed = time.perf_counter() - start
-    mst_df = pd.DataFrame(result)
+    mst_df = pd.DataFrame(result) if not isinstance(result, pd.DataFrame) else result
+    return mst_df, elapsed
 
-    #stats, for checking correctness (should have V-1 edges, where V is the number of unique nodes in the graph)
+
+def print_comparison(data, results):
+    # print a comparison table of all three algorithms
     unique_nodes = set(data['Start Node ID']).union(data['End Node ID'])
-    total = mst_df['L2 Distance'].sum()
+    expected_edges = len(unique_nodes) - 1
 
-    #output to output/prims_output.csv
-    output_dir = repo_root / 'output' / 'prims'
-    output_dir.mkdir(parents=True, exist_ok=True)   # create folder if missing
-    output_path = output_dir / 'prims_output.csv'
-    summary_path = output_dir / 'prims_summary.csv'
+    print()
+    print(f"{'Algorithm':<20} {'MST Edges':>10} {'Expected':>10} {'Total Distance':>18} {'Runtime (s)':>12}")
+    print("-" * 74)
+    for name, mst_df, elapsed in results:
+        total = mst_df['L2 Distance'].sum()
+        edge_count = len(mst_df)
+        print(f"{name:<20} {edge_count:>10} {expected_edges:>10} {total:>18.5f} {elapsed:>12.6f}")
+    print()
 
-    mst_df.to_csv(output_path, index=False)
 
-    #write summary stats to a separate file
-    summary = pd.DataFrame({
-        'metric': ['Unique nodes', 'Input edges', 'MST edges', 'Expected (V-1)', 'Total L2 Distance', 'Runtime (seconds)'],
-        'value':  [len(unique_nodes), len(data), len(mst_df), len(unique_nodes) - 1, total, f'{elapsed:.6f}'],
-    })
-    summary.to_csv(summary_path, index=False)
+def main():
+    if len(sys.argv) != 3:
+        print("Usage: python main.py inputfile outputfile")
+        sys.exit(1)
 
-    print(f"Prim's algorithm output saved to {output_path}")
-    print(f"Prim's summary saved to {summary_path}")
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
 
-    #heapprims Algorithm - time this
-    start = time.perf_counter()
-    result = heapprims(data)
-    elapsed = time.perf_counter() - start
-    mst_df = pd.DataFrame(result)
+    data = parse_csv(input_file)
+    if data is None:
+        print(f"Error: could not parse input file '{input_file}'")
+        sys.exit(1)
 
-    #stats, for checking correctness (should have V-1 edges, where V is the number of unique nodes in the graph)
-    total = mst_df['L2 Distance'].sum()
+    repo_root = Path(__file__).resolve().parent.parent
+    unique_nodes = set(data['Start Node ID']).union(data['End Node ID'])
 
-    #output to output/heapprims_output.csv
-    output_dir = repo_root / 'output' / 'heapprims'
-    output_dir.mkdir(parents=True, exist_ok=True)   # create folder if missing
-    output_path = output_dir / 'heapprims_output.csv'
-    summary_path = output_dir / 'heapprims_summary.csv'
+    results = []
+    algo_configs = [
+        ("Heap Prim's", heapprims, "heapprims"),
+        ("Naive Prim's", prims,    "prims"),
+        ("Kruskal's",   kruskal,   "kruskal"),
+    ]
+    for name, fn, folder in algo_configs:
+        mst_df, elapsed = run_algorithm(name, fn, data)
+        results.append((name, mst_df, elapsed))
 
-    mst_df.to_csv(output_path, index=False)
+        # write output and summary csvs to output/<algo>/ folder
+        output_dir = repo_root / 'output' / folder
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    #write summary stats to a separate file
-    summary = pd.DataFrame({
-        'metric': ['Unique nodes', 'Input edges', 'MST edges', 'Expected (V-1)', 'Total L2 Distance', 'Runtime (seconds)'],
-        'value':  [len(unique_nodes), len(data), len(mst_df), len(unique_nodes) - 1, total, f'{elapsed:.6f}'],
-    })
-    summary.to_csv(summary_path, index=False)
+        write_output(mst_df, output_dir / f'{folder}_output.csv')
 
-    print(f"Heap Prim's algorithm output saved to {output_path}")
-    print(f"Heap Prim's summary saved to {summary_path}")
+        summary = pd.DataFrame({
+            'metric': ['Unique nodes', 'Input edges', 'MST edges', 'Expected (V-1)', 'Total L2 Distance', 'Runtime (seconds)'],
+            'value':  [len(unique_nodes), len(data), len(mst_df), len(unique_nodes) - 1, mst_df['L2 Distance'].sum(), f'{elapsed:.6f}'],
+        })
+        summary.to_csv(output_dir / f'{folder}_summary.csv', index=False)
 
-    #kruskall Algorithm - time this
-    start = time.perf_counter()
-    result = kruskal(data)
-    elapsed = time.perf_counter() - start
-    mst_df = pd.DataFrame(result)
+    print_comparison(data, results)
 
-    #stats, for checking correctness (should have V-1 edges, where V is the number of unique nodes in the graph)
-    total = mst_df['L2 Distance'].sum()
-
-    #output to output/heapprims_output.csv
-    output_dir = repo_root / 'output' / 'kruskal'
-    output_dir.mkdir(parents=True, exist_ok=True)   # create folder if missing
-    output_path = output_dir / 'kruskal_output.csv'
-    summary_path = output_dir / 'kruskal_summary.csv'
-
-    mst_df.to_csv(output_path, index=False)
-
-    #write summary stats to a separate file
-    summary = pd.DataFrame({
-        'metric': ['Unique nodes', 'Input edges', 'MST edges', 'Expected (V-1)', 'Total L2 Distance', 'Runtime (seconds)'],
-        'value':  [len(unique_nodes), len(data), len(mst_df), len(unique_nodes) - 1, total, f'{elapsed:.6f}'],
-    })
-    summary.to_csv(summary_path, index=False)
-
-    print(f"Kruskal's algorithm output saved to {output_path}")
-    print(f"Kruskal's summary saved to {summary_path}")
+    # write heapprims result to the grader's output file
+    write_output(results[0][1], output_file)
 
 
 if __name__ == "__main__":

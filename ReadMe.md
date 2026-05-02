@@ -10,7 +10,7 @@ CSCI 311 project implementing and benchmarking three MST algorithms on a real ed
 | Naive Prim's | O(V²) | NumPy-vectorized crossing-edge scan |
 | Kruskal's | O(E log E) | DSU with union-by-rank and path compression |
 
-All three produce identical MSTs verified by matching edge count and total weight.
+All three produce MSTs verified by matching edge count and total weight.
 
 ## Usage
 
